@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-base-950: #100c1a;
+  --color-base-900: #171221;
+  --color-base-800: #211a30;
+  --color-base-700: #2d2440;
+  --color-base-600: #3c3155;
+  --color-base-500: #564a78;
+  --color-base-300: #9d92b8;
+  --color-base-100: #e8e4f3;
+  --color-base-50: #f5f3fa;
+
+  --color-accent-violet: #8b5cf6;
+  --color-accent-violet-soft: #a78bfa;
+  --color-accent-coral: #f97373;
+  --color-accent-amber: #fbbf66;
+  --color-accent-mint: #5eead4;
+
+  --font-sans: "Inter", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --shadow-soft: 0 8px 30px -10px rgb(0 0 0 / 0.35);
+  --shadow-glow: 0 0 0 1px rgb(139 92 246 / 0.2), 0 8px 30px -8px rgb(139 92 246 / 0.45);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: radial-gradient(circle at 20% -10%, rgba(139, 92, 246, 0.18), transparent 45%),
+              radial-gradient(circle at 90% 10%, rgba(249, 115, 115, 0.12), transparent 40%),
+              var(--color-base-900);
+  color: var(--color-base-50);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+.scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(140px) rotate(540deg); opacity: 0; }
+}
+
+.confetti-piece {
+  animation: confetti-fall 900ms ease-in forwards;
+}
