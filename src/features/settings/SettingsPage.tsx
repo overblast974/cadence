@@ -59,7 +59,7 @@ export function SettingsPage() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as CadenceBackup;
-      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.routines)) {
+      if (!parsed || (parsed.version !== 1 && parsed.version !== 2) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.routines)) {
         throw new Error('format invalide');
       }
       await importBackup(parsed);

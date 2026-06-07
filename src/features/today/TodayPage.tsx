@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import { useCategories, useTasksForDate } from '../../hooks/useCadenceData';
+import { useCategories, useProjects, useTasksForDate } from '../../hooks/useCadenceData';
 import { fullDateLabel, todayKey } from '../../lib/date';
 import { createTask, deleteTask, toggleTask, updateTask } from '../../db/repository';
 import type { Task } from '../../types';
@@ -16,6 +16,7 @@ export function TodayPage() {
   const date = useMemo(() => todayKey(), []);
   const tasks = useTasksForDate(date);
   const categories = useCategories();
+  const projects = useProjects();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>(undefined);
   const [celebration, setCelebration] = useState(0);
@@ -104,6 +105,7 @@ export function TodayPage() {
         onClose={() => setFormOpen(false)}
         onSubmit={(values) => void handleSubmit(values)}
         categories={categories ?? []}
+        projects={projects ?? []}
         defaultDate={date}
         task={editing}
       />

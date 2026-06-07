@@ -2,16 +2,51 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef } from 'react';
 import { db, seedDefaultCategories } from '../db/database';
 import { ensureRoutineInstances } from '../db/repository';
-import type { Category, Routine, Task } from '../types';
+import type { Category, Project, Routine, Task } from '../types';
+
+/** Les sous-tâches ne sont pas affichées dans les listes du jour / de la semaine : elles vivent au sein de leur tâche parente. */
+function withoutSubtasks(tasks: Task[]): Task[] {
+  return tasks.filter((t) => !t.parentTaskId);
+}
 
 export function useTasksForDate(date: string): Task[] | undefined {
-  return useLiveQuery(() => db.tasks.where('date').equals(date).sortBy('time'), [date]);
+  return useLiveQuery(() => db.tasks.where('date').equals(date).sortBy('time').then(withoutSubtasks), [date]);
 }
 
 export function useTasksForRange(start: string, end: string): Task[] | undefined {
   return useLiveQuery(
-    () => db.tasks.where('date').between(start, end, true, true).sortBy('date'),
+    () => db.tasks.where('date').between(start, end, true, true).sortBy('date').then(withoutSubtasks),
     [start, end],
+  );
+}
+
+export function useSubtasks(parentId: string | undefined): Task[] | undefined {
+  return useLiveQuery(
+    () => (parentId ? db.tasks.where('parentTaskId').equals(parentId).sortBy('createdAt') : Promise.resolve<Task[]>([])),
+    [parentId],
+  );
+}
+
+export function useProjects(): Project[] | undefined {
+  return useLiveQuery(
+    () => db.projects.toArray().then((ps) => [...ps].sort((a, b) => b.createdAt - a.createdAt)),
+    [],
+  );
+}
+
+export function useTasksForProject(projectId: string | undefined): Task[] | undefined {
+  return useLiveQuery(
+    () =>
+      projectId
+        ? db.tasks
+            .where('projectId')
+            .equals(projectId)
+            .toArray()
+            .then((tasks) =>
+              withoutSubtasks(tasks).sort((a, b) => (a.date === b.date ? (a.time ?? '').localeCompare(b.time ?? '') : a.date.localeCompare(b.date))),
+            )
+        : Promise.resolve<Task[]>([]),
+    [projectId],
   );
 }
 

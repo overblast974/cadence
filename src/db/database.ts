@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Category, Routine, Task } from '../types';
+import type { Category, Project, Routine, Task } from '../types';
 
 /**
  * Toutes les données de Cadence vivent uniquement dans IndexedDB, sur l'appareil.
@@ -9,6 +9,7 @@ export class CadenceDB extends Dexie {
   tasks!: Table<Task, string>;
   routines!: Table<Routine, string>;
   categories!: Table<Category, string>;
+  projects!: Table<Project, string>;
 
   constructor(name = 'cadence') {
     super(name);
@@ -16,6 +17,13 @@ export class CadenceDB extends Dexie {
       tasks: 'id, date, done, routineId, categoryId, [date+routineId]',
       routines: 'id',
       categories: 'id',
+    });
+    // v2 : sous-tâches (parentTaskId) et projets — additif, aucune migration de données requise.
+    this.version(2).stores({
+      tasks: 'id, date, done, routineId, categoryId, parentTaskId, projectId, [date+routineId]',
+      routines: 'id',
+      categories: 'id',
+      projects: 'id',
     });
   }
 }

@@ -37,8 +37,27 @@ export interface Task {
   categoryId?: string;
   /** Présent si la tâche a été générée depuis une routine */
   routineId?: string;
+  /** Présent si cette tâche est une sous-tâche : référence sa tâche parente. */
+  parentTaskId?: string;
+  /** Présent si cette tâche est rattachée à un projet. */
+  projectId?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * Un projet regroupe plusieurs tâches, possiblement réparties sur plusieurs jours.
+ * Il est considéré terminé une fois que toutes ses tâches sont validées.
+ */
+export interface Project {
+  id: string;
+  title: string;
+  notes?: string;
+  categoryId?: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Renseigné automatiquement quand toutes les tâches du projet sont validées. */
+  completedAt?: number;
 }
 
 export type ViewportMode = 'compact' | 'expanded';

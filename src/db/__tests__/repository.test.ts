@@ -3,8 +3,11 @@ import 'fake-indexeddb/auto';
 import { CadenceDB, seedDefaultCategories, resetSeedFlagForTests } from '../database';
 import {
   createCategory,
+  createProject,
   createRoutine,
+  createSubtask,
   createTask,
+  deleteProject,
   deleteRoutine,
   deleteTask,
   ensureRoutineInstances,
@@ -15,6 +18,7 @@ import {
   toggleTask,
   updateRoutine,
   updateTask,
+  type CadenceBackup,
 } from '../repository';
 import { fromDateKey, isoWeekday, toDateKey } from '../../lib/date';
 
@@ -155,29 +159,147 @@ describe('deleteRoutine', () => {
   });
 });
 
+describe('sous-tâches', () => {
+  it('crée une sous-tâche héritant de la date et de la catégorie de sa tâche parente', async () => {
+    const parent = await createTask({ title: 'Organiser la fête', date: '2024-06-03', categoryId: 'cat-perso' }, db);
+    const subtask = await createSubtask(parent.id, { title: 'Acheter le gâteau' }, db);
+    expect(subtask.parentTaskId).toBe(parent.id);
+    expect(subtask.date).toBe(parent.date);
+    expect(subtask.categoryId).toBe(parent.categoryId);
+  });
+
+  it('valide automatiquement la tâche parente une fois toutes les sous-tâches terminées', async () => {
+    const parent = await createTask({ title: 'Organiser la fête', date: '2024-06-03' }, db);
+    const sub1 = await createSubtask(parent.id, { title: 'Acheter le gâteau' }, db);
+    const sub2 = await createSubtask(parent.id, { title: 'Envoyer les invitations' }, db);
+
+    await toggleTask(sub1.id, db);
+    expect((await db.tasks.get(parent.id))?.done).toBe(false);
+
+    await toggleTask(sub2.id, db);
+    expect((await db.tasks.get(parent.id))?.done).toBe(true);
+
+    // Décocher une sous-tâche rouvre la tâche parente.
+    await toggleTask(sub1.id, db);
+    expect((await db.tasks.get(parent.id))?.done).toBe(false);
+  });
+
+  it('cocher/décocher une tâche parente répercute l’état sur toutes ses sous-tâches', async () => {
+    const parent = await createTask({ title: 'Organiser la fête', date: '2024-06-03' }, db);
+    const sub1 = await createSubtask(parent.id, { title: 'Acheter le gâteau' }, db);
+    const sub2 = await createSubtask(parent.id, { title: 'Envoyer les invitations' }, db);
+
+    await toggleTask(parent.id, db);
+    expect((await db.tasks.get(sub1.id))?.done).toBe(true);
+    expect((await db.tasks.get(sub2.id))?.done).toBe(true);
+  });
+
+  it('rouvre une tâche parente déjà validée quand on lui ajoute une nouvelle sous-tâche', async () => {
+    const parent = await createTask({ title: 'Organiser la fête', date: '2024-06-03' }, db);
+    await toggleTask(parent.id, db);
+    expect((await db.tasks.get(parent.id))?.done).toBe(true);
+
+    await createSubtask(parent.id, { title: 'Acheter le gâteau' }, db);
+    expect((await db.tasks.get(parent.id))?.done).toBe(false);
+  });
+
+  it('supprime les sous-tâches avec leur tâche parente', async () => {
+    const parent = await createTask({ title: 'Organiser la fête', date: '2024-06-03' }, db);
+    const subtask = await createSubtask(parent.id, { title: 'Acheter le gâteau' }, db);
+    await deleteTask(parent.id, db);
+    expect(await db.tasks.get(subtask.id)).toBeUndefined();
+  });
+});
+
+describe('projets', () => {
+  it('valide automatiquement le projet une fois toutes ses tâches terminées', async () => {
+    const project = await createProject({ title: 'Déménagement' }, db);
+    const taskA = await createTask({ title: 'Trouver des cartons', date: '2024-06-03', projectId: project.id }, db);
+    const taskB = await createTask({ title: 'Réserver le camion', date: '2024-06-05', projectId: project.id }, db);
+
+    await toggleTask(taskA.id, db);
+    expect((await db.projects.get(project.id))?.completedAt).toBeUndefined();
+
+    await toggleTask(taskB.id, db);
+    expect((await db.projects.get(project.id))?.completedAt).toBeDefined();
+
+    // Rouvrir une tâche rouvre le projet.
+    await toggleTask(taskA.id, db);
+    expect((await db.projects.get(project.id))?.completedAt).toBeUndefined();
+  });
+
+  it('délie les tâches plutôt que de les supprimer quand on supprime le projet', async () => {
+    const project = await createProject({ title: 'Déménagement' }, db);
+    const task = await createTask({ title: 'Trouver des cartons', date: '2024-06-03', projectId: project.id }, db);
+
+    await deleteProject(project.id, db);
+
+    expect(await db.projects.get(project.id)).toBeUndefined();
+    expect((await db.tasks.get(task.id))?.projectId).toBeUndefined();
+  });
+
+  it('synchronise l’état du projet quand une tâche change de projet', async () => {
+    const projectA = await createProject({ title: 'Projet A' }, db);
+    const projectB = await createProject({ title: 'Projet B' }, db);
+    const task = await createTask({ title: 'Tâche unique', date: '2024-06-03', projectId: projectA.id }, db);
+    await toggleTask(task.id, db);
+    expect((await db.projects.get(projectA.id))?.completedAt).toBeDefined();
+
+    await updateTask(task.id, { projectId: projectB.id }, db);
+    expect((await db.projects.get(projectA.id))?.completedAt).toBeUndefined();
+    expect((await db.projects.get(projectB.id))?.completedAt).toBeDefined();
+  });
+});
+
 describe('export / import (sauvegarde locale)', () => {
   it('exporte puis réimporte fidèlement les données', async () => {
     await seedDefaultCategories(db);
     await createTask({ title: 'Tâche A', date: '2024-06-03' }, db);
     await createRoutine({ title: 'Routine A', daysOfWeek: [2] }, db);
 
+    await createProject({ title: 'Projet A' }, db);
+
     const backup = await exportBackup(db);
-    expect(backup.version).toBe(1);
+    expect(backup.version).toBe(2);
     expect(backup.tasks).toHaveLength(1);
     expect(backup.routines).toHaveLength(1);
     expect(backup.categories).toHaveLength(4);
+    expect(backup.projects).toHaveLength(1);
 
     // On vide la base puis on restaure : tout doit revenir à l'identique.
     await db.tasks.clear();
     await db.routines.clear();
     await db.categories.clear();
+    await db.projects.clear();
 
     await importBackup(backup, db);
 
     expect(await db.tasks.count()).toBe(1);
     expect(await db.routines.count()).toBe(1);
     expect(await db.categories.count()).toBe(4);
+    expect(await db.projects.count()).toBe(1);
     const restoredTask = (await db.tasks.toArray())[0];
     expect(restoredTask.title).toBe('Tâche A');
+  });
+
+  it('réimporte une sauvegarde au format v1 (sans projets)', async () => {
+    await seedDefaultCategories(db);
+    await createTask({ title: 'Tâche B', date: '2024-06-04' }, db);
+
+    const legacyBackup: CadenceBackup = {
+      version: 1,
+      exportedAt: Date.now(),
+      tasks: await db.tasks.toArray(),
+      routines: [],
+      categories: await db.categories.toArray(),
+    };
+
+    await db.tasks.clear();
+    await db.categories.clear();
+
+    await importBackup(legacyBackup, db);
+
+    expect(await db.tasks.count()).toBe(1);
+    expect(await db.projects.count()).toBe(0);
   });
 });

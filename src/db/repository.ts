@@ -1,6 +1,6 @@
 import { addDays } from 'date-fns';
 import { db, type CadenceDB } from './database';
-import type { Category, Routine, Task, Weekday } from '../types';
+import type { Category, Project, Routine, Task, Weekday } from '../types';
 import { buildTaskFromRoutine, missingInstances, plannedInstances, randomId } from '../lib/routineEngine';
 import { fromDateKey, toDateKey } from '../lib/date';
 
@@ -9,7 +9,7 @@ import { fromDateKey, toDateKey } from '../lib/date';
 // ---------------------------------------------------------------------------
 
 export async function createTask(
-  input: { title: string; date: string; time?: string; notes?: string; categoryId?: string },
+  input: { title: string; date: string; time?: string; notes?: string; categoryId?: string; projectId?: string },
   database: CadenceDB = db,
 ): Promise<Task> {
   const now = Date.now();
@@ -20,6 +20,7 @@ export async function createTask(
     date: input.date,
     time: input.time || undefined,
     categoryId: input.categoryId,
+    projectId: input.projectId,
     done: false,
     createdAt: now,
     updatedAt: now,
@@ -29,28 +30,53 @@ export async function createTask(
 }
 
 export async function toggleTask(id: string, database: CadenceDB = db): Promise<void> {
-  await database.transaction('rw', database.tasks, async () => {
+  await database.transaction('rw', database.tasks, database.projects, async () => {
     const task = await database.tasks.get(id);
     if (!task) return;
     const done = !task.done;
-    await database.tasks.update(id, {
-      done,
-      completedAt: done ? Date.now() : undefined,
-      updatedAt: Date.now(),
-    });
+    const now = Date.now();
+    await database.tasks.update(id, { done, completedAt: done ? now : undefined, updatedAt: now });
+
+    // Cocher/décocher une tâche qui a des sous-tâches répercute l'état sur toutes ses sous-tâches.
+    const children = await database.tasks.where('parentTaskId').equals(id).toArray();
+    await Promise.all(
+      children
+        .filter((child) => child.done !== done)
+        .map((child) => database.tasks.update(child.id, { done, completedAt: done ? now : undefined, updatedAt: now })),
+    );
+
+    if (task.parentTaskId) await syncParentCompletion(task.parentTaskId, now, database);
+    if (task.projectId) await syncProjectCompletion(task.projectId, now, database);
   });
 }
 
 export async function updateTask(
   id: string,
-  changes: Partial<Pick<Task, 'title' | 'notes' | 'date' | 'time' | 'categoryId'>>,
+  changes: Partial<Pick<Task, 'title' | 'notes' | 'date' | 'time' | 'categoryId' | 'projectId'>>,
   database: CadenceDB = db,
 ): Promise<void> {
-  await database.tasks.update(id, { ...changes, updatedAt: Date.now() });
+  await database.transaction('rw', database.tasks, database.projects, async () => {
+    const task = await database.tasks.get(id);
+    if (!task) return;
+    const now = Date.now();
+    await database.tasks.update(id, { ...changes, updatedAt: now });
+    if ('projectId' in changes) {
+      if (task.projectId && task.projectId !== changes.projectId) await syncProjectCompletion(task.projectId, now, database);
+      if (changes.projectId) await syncProjectCompletion(changes.projectId, now, database);
+    }
+  });
 }
 
 export async function deleteTask(id: string, database: CadenceDB = db): Promise<void> {
-  await database.tasks.delete(id);
+  await database.transaction('rw', database.tasks, database.projects, async () => {
+    const task = await database.tasks.get(id);
+    if (!task) return;
+    const now = Date.now();
+    const children = await database.tasks.where('parentTaskId').equals(id).toArray();
+    await database.tasks.bulkDelete([id, ...children.map((c) => c.id)]);
+    if (task.parentTaskId) await syncParentCompletion(task.parentTaskId, now, database);
+    if (task.projectId) await syncProjectCompletion(task.projectId, now, database);
+  });
 }
 
 export async function tasksForDate(date: string, database: CadenceDB = db): Promise<Task[]> {
@@ -59,6 +85,115 @@ export async function tasksForDate(date: string, database: CadenceDB = db): Prom
 
 export async function tasksForRange(start: string, end: string, database: CadenceDB = db): Promise<Task[]> {
   return database.tasks.where('date').between(start, end, true, true).sortBy('date');
+}
+
+// ---------------------------------------------------------------------------
+// Sous-tâches
+// ---------------------------------------------------------------------------
+
+/**
+ * Crée une sous-tâche au sein d'une tâche existante. Elle hérite de la date et
+ * de la catégorie de sa tâche parente (les sous-tâches ne sont pas plani-
+ * fiables indépendamment : elles forment une simple checklist).
+ */
+export async function createSubtask(parentId: string, input: { title: string }, database: CadenceDB = db): Promise<Task> {
+  return database.transaction('rw', database.tasks, database.projects, async () => {
+    const parent = await database.tasks.get(parentId);
+    if (!parent) throw new Error('Tâche parente introuvable');
+    const now = Date.now();
+    const subtask: Task = {
+      id: randomId(),
+      title: input.title.trim(),
+      date: parent.date,
+      categoryId: parent.categoryId,
+      parentTaskId: parentId,
+      done: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await database.tasks.add(subtask);
+    // Ajouter une sous-tâche non terminée rouvre une tâche parente déjà validée.
+    if (parent.done) {
+      await database.tasks.update(parentId, { done: false, completedAt: undefined, updatedAt: now });
+      if (parent.projectId) await syncProjectCompletion(parent.projectId, now, database);
+    }
+    return subtask;
+  });
+}
+
+export async function subtasksForParent(parentId: string, database: CadenceDB = db): Promise<Task[]> {
+  return database.tasks.where('parentTaskId').equals(parentId).sortBy('createdAt');
+}
+
+/** Recalcule l'état (fait/à faire) d'une tâche parente d'après ses sous-tâches. */
+async function syncParentCompletion(parentId: string, now: number, database: CadenceDB): Promise<void> {
+  const [parent, children] = await Promise.all([
+    database.tasks.get(parentId),
+    database.tasks.where('parentTaskId').equals(parentId).toArray(),
+  ]);
+  if (!parent || children.length === 0) return;
+  const allDone = children.every((c) => c.done);
+  if (allDone === parent.done) return;
+  await database.tasks.update(parentId, { done: allDone, completedAt: allDone ? now : undefined, updatedAt: now });
+  if (parent.projectId) await syncProjectCompletion(parent.projectId, now, database);
+}
+
+// ---------------------------------------------------------------------------
+// Projets
+// ---------------------------------------------------------------------------
+
+export async function createProject(
+  input: { title: string; notes?: string; categoryId?: string },
+  database: CadenceDB = db,
+): Promise<Project> {
+  const now = Date.now();
+  const project: Project = {
+    id: randomId(),
+    title: input.title.trim(),
+    notes: input.notes?.trim() || undefined,
+    categoryId: input.categoryId,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await database.projects.add(project);
+  return project;
+}
+
+export async function updateProject(
+  id: string,
+  changes: Partial<Pick<Project, 'title' | 'notes' | 'categoryId'>>,
+  database: CadenceDB = db,
+): Promise<void> {
+  await database.projects.update(id, { ...changes, updatedAt: Date.now() });
+}
+
+export async function deleteProject(id: string, database: CadenceDB = db): Promise<void> {
+  await database.transaction('rw', database.projects, database.tasks, async () => {
+    const linked = await database.tasks.where('projectId').equals(id).toArray();
+    const now = Date.now();
+    await Promise.all(linked.map((t) => database.tasks.update(t.id, { projectId: undefined, updatedAt: now })));
+    await database.projects.delete(id);
+  });
+}
+
+export async function tasksForProject(projectId: string, database: CadenceDB = db): Promise<Task[]> {
+  const tasks = await database.tasks.where('projectId').equals(projectId).toArray();
+  return tasks.filter((t) => !t.parentTaskId).sort((a, b) => (a.date === b.date ? (a.time ?? '').localeCompare(b.time ?? '') : a.date.localeCompare(b.date)));
+}
+
+/** Recalcule l'état (terminé/non terminé) d'un projet d'après ses tâches liées. */
+async function syncProjectCompletion(projectId: string, now: number, database: CadenceDB): Promise<void> {
+  const [project, tasks] = await Promise.all([
+    database.projects.get(projectId),
+    database.tasks.where('projectId').equals(projectId).filter((t) => !t.parentTaskId).toArray(),
+  ]);
+  if (!project) return;
+  // Un projet sans tâche n'est jamais "terminé" : on évite ainsi de marquer
+  // comme accompli un projet vide (création) ou vidé de toutes ses tâches.
+  const allDone = tasks.length > 0 && tasks.every((t) => t.done);
+  const wasComplete = project.completedAt !== undefined;
+  if (allDone === wasComplete) return;
+  await database.projects.update(projectId, { completedAt: allDone ? now : undefined, updatedAt: now });
 }
 
 // ---------------------------------------------------------------------------
@@ -172,29 +307,32 @@ export async function ensureRoutineInstances(reference: Date = new Date(), datab
 // ---------------------------------------------------------------------------
 
 export interface CadenceBackup {
-  version: 1;
+  version: 1 | 2;
   exportedAt: number;
   tasks: Task[];
   routines: Routine[];
   categories: Category[];
+  projects?: Project[];
 }
 
 export async function exportBackup(database: CadenceDB = db): Promise<CadenceBackup> {
-  const [tasks, routines, categories] = await Promise.all([
+  const [tasks, routines, categories, projects] = await Promise.all([
     database.tasks.toArray(),
     database.routines.toArray(),
     database.categories.toArray(),
+    database.projects.toArray(),
   ]);
-  return { version: 1, exportedAt: Date.now(), tasks, routines, categories };
+  return { version: 2, exportedAt: Date.now(), tasks, routines, categories, projects };
 }
 
 export async function importBackup(backup: CadenceBackup, database: CadenceDB = db): Promise<void> {
-  await database.transaction('rw', database.tasks, database.routines, database.categories, async () => {
-    await Promise.all([database.tasks.clear(), database.routines.clear(), database.categories.clear()]);
+  await database.transaction('rw', database.tasks, database.routines, database.categories, database.projects, async () => {
+    await Promise.all([database.tasks.clear(), database.routines.clear(), database.categories.clear(), database.projects.clear()]);
     await Promise.all([
       database.tasks.bulkAdd(backup.tasks),
       database.routines.bulkAdd(backup.routines),
       database.categories.bulkAdd(backup.categories),
+      database.projects.bulkAdd(backup.projects ?? []),
     ]);
   });
 }

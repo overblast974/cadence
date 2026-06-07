@@ -3,7 +3,7 @@ import { addWeeks } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import type { Task } from '../../types';
-import { useCategories, useTasksForRange } from '../../hooks/useCadenceData';
+import { useCategories, useProjects, useTasksForRange } from '../../hooks/useCadenceData';
 import { useViewportMode } from '../../hooks/useViewportMode';
 import { monthLabel, toDateKey, weekDays } from '../../lib/date';
 import { createTask, deleteTask, toggleTask, updateTask } from '../../db/repository';
@@ -20,6 +20,7 @@ export function WeekPage() {
 
   const tasks = useTasksForRange(start, end);
   const categories = useCategories();
+  const projects = useProjects();
   const categoryById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c])), [categories]);
 
   const [formDate, setFormDate] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export function WeekPage() {
         onClose={closeForm}
         onSubmit={(values) => void handleSubmit(values)}
         categories={categories ?? []}
+        projects={projects ?? []}
         defaultDate={formDate ?? toDateKey(new Date())}
         task={editing}
       />

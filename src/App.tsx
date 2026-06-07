@@ -9,6 +9,7 @@ import { useBootstrapDatabase } from './hooks/useCadenceData';
 import { TodayPage } from './features/today/TodayPage';
 const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })));
 const RoutinesPage = lazy(() => import('./features/routines/RoutinesPage').then((m) => ({ default: m.RoutinesPage })));
+const ProjectsPage = lazy(() => import('./features/projects/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
 const StatsPage = lazy(() => import('./features/stats/StatsPage').then((m) => ({ default: m.StatsPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
@@ -40,6 +41,14 @@ function App() {
           element={
             <Suspense fallback={<PageFallback />}>
               <RoutinesPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="projets"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <ProjectsPage />
             </Suspense>
           }
         />
