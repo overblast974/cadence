@@ -7,7 +7,7 @@ import { db, resetSeedFlagForTests } from '../db/database';
  */
 export async function resetDatabase(): Promise<void> {
   resetSeedFlagForTests();
-  await db.transaction('rw', db.tasks, db.routines, db.categories, async () => {
-    await Promise.all([db.tasks.clear(), db.routines.clear(), db.categories.clear()]);
+  await db.transaction('rw', db.tasks, db.routines, db.categories, db.projects, async () => {
+    await Promise.all([db.tasks.clear(), db.routines.clear(), db.categories.clear(), db.projects.clear()]);
   });
 }

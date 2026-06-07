@@ -75,8 +75,8 @@ export function SettingsPage() {
       setTimeout(() => setConfirmingReset(false), 3000);
       return;
     }
-    await db.transaction('rw', db.tasks, db.routines, db.categories, async () => {
-      await Promise.all([db.tasks.clear(), db.routines.clear(), db.categories.clear()]);
+    await db.transaction('rw', db.tasks, db.routines, db.categories, db.projects, async () => {
+      await Promise.all([db.tasks.clear(), db.routines.clear(), db.categories.clear(), db.projects.clear()]);
     });
     setConfirmingReset(false);
     setStatus({ kind: 'success', message: 'Toutes les données ont été supprimées.' });
