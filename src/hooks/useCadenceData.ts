@@ -37,8 +37,12 @@ export function useBootstrapDatabase(): void {
     if (ran.current) return;
     ran.current = true;
     void (async () => {
-      await seedDefaultCategories();
-      await ensureRoutineInstances();
+      try {
+        await seedDefaultCategories();
+        await ensureRoutineInstances();
+      } catch (error) {
+        console.error('Échec de l’initialisation de la base locale', error);
+      }
     })();
   }, []);
 }

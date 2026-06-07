@@ -1,12 +1,16 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import clsx from 'clsx';
 import { Database, Download, Smartphone, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { db } from '../../db/database';
 import { exportBackup, importBackup, type CadenceBackup } from '../../db/repository';
 import { GhostButton, PrimaryButton } from '../../components/FormControls';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
-type Status = { kind: 'idle' } | { kind: 'success'; message: string } | { kind: 'error'; message: string };
+type Status = { kind: 'idle' } | { kind: 'success'; message: string } | { kind: 'error'; message: string } | { kind: 'info'; message: string };
+
+const MANUAL_INSTALL_MESSAGE =
+  "Ton navigateur ne propose pas l’installation directe pour l’instant : ouvre son menu (⋮ ou icône de partage) puis choisis « Ajouter à l’écran d’accueil » ou « Installer l’application ».";
 
 export function SettingsPage() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
@@ -14,8 +18,16 @@ export function SettingsPage() {
   const install = useInstallPrompt();
 
   async function handleInstall() {
+    if (!install.canPrompt) {
+      setStatus({ kind: 'info', message: MANUAL_INSTALL_MESSAGE });
+      return;
+    }
     const accepted = await install.promptInstall();
-    if (accepted) setStatus({ kind: 'success', message: 'Installation lancée — Cadence va apparaître sur ton écran d’accueil.' });
+    setStatus(
+      accepted
+        ? { kind: 'success', message: 'Installation lancée — Cadence va apparaître sur ton écran d’accueil.' }
+        : { kind: 'info', message: 'Installation annulée. Tu pourras relancer l’opération quand tu le souhaites.' },
+    );
   }
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,17 +98,13 @@ export function SettingsPage() {
             <div>
               <h2 className="text-[15px] font-medium">Installer l’application</h2>
               <p className="mt-1 text-sm text-base-300">
-                {install.canPrompt
-                  ? 'Ajoute Cadence à ton écran d’accueil pour l’ouvrir comme une application, en plein écran et hors-ligne.'
-                  : 'Ton navigateur ne propose pas d’installation directe ici : ouvre le menu (⋮) puis « Ajouter à l’écran d’accueil » ou « Installer l’application ».'}
+                Ajoute Cadence à ton écran d’accueil pour l’ouvrir comme une application, en plein écran et hors-ligne.
               </p>
             </div>
           </div>
-          {install.canPrompt && (
-            <PrimaryButton type="button" onClick={() => void handleInstall()} className="self-start">
-              <Smartphone className="size-4" /> Installer Cadence
-            </PrimaryButton>
-          )}
+          <PrimaryButton type="button" onClick={() => void handleInstall()} className="self-start">
+            <Smartphone className="size-4" /> Installer Cadence
+          </PrimaryButton>
         </section>
       )}
 
@@ -160,11 +168,11 @@ export function SettingsPage() {
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className={
-            status.kind === 'success'
-              ? 'rounded-xl border border-accent-mint/30 bg-accent-mint/10 px-4 py-3 text-sm text-accent-mint'
-              : 'rounded-xl border border-accent-coral/30 bg-accent-coral/10 px-4 py-3 text-sm text-accent-coral'
-          }
+          className={clsx('rounded-xl border px-4 py-3 text-sm', {
+            'border-accent-mint/30 bg-accent-mint/10 text-accent-mint': status.kind === 'success',
+            'border-accent-coral/30 bg-accent-coral/10 text-accent-coral': status.kind === 'error',
+            'border-accent-violet/30 bg-accent-violet/10 text-accent-violet-soft': status.kind === 'info',
+          })}
         >
           {status.message}
         </motion.p>
