@@ -36,13 +36,13 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             className="relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto scroll-hidden rounded-t-3xl border border-base-700/60 bg-base-800 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft sm:rounded-3xl"
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{title}</h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="min-w-0 truncate text-lg font-semibold">{title}</h2>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Fermer"
-                className="rounded-full p-1.5 text-base-300 transition-colors hover:bg-base-700 hover:text-base-50"
+                className="shrink-0 rounded-full p-1.5 text-base-300 transition-colors hover:bg-base-700 hover:text-base-50"
               >
                 <X className="size-5" />
               </button>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import clsx from 'clsx';
 
 interface ProgressRingProps {
   value: number; // 0..1
@@ -46,7 +47,9 @@ export function ProgressRing({ value, size = 96, strokeWidth = 8, label, sublabe
         </defs>
       </svg>
       <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className="text-lg font-semibold tabular-nums">{label ?? `${Math.round(clamped * 100)}%`}</span>
+        <span className={clsx('font-semibold tabular-nums', size <= 48 ? 'text-[10px]' : 'text-lg')}>
+          {label ?? `${Math.round(clamped * 100)}%`}
+        </span>
         {sublabel && <span className="text-[11px] text-base-300">{sublabel}</span>}
       </div>
     </div>

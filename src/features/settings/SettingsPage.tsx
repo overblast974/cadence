@@ -59,7 +59,13 @@ export function SettingsPage() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as CadenceBackup;
-      if (!parsed || (parsed.version !== 1 && parsed.version !== 2) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.routines)) {
+      if (
+        !parsed ||
+        (parsed.version !== 1 && parsed.version !== 2) ||
+        !Array.isArray(parsed.tasks) ||
+        !Array.isArray(parsed.routines) ||
+        (parsed.version === 2 && !Array.isArray(parsed.projects))
+      ) {
         throw new Error('format invalide');
       }
       await importBackup(parsed);
@@ -152,7 +158,7 @@ export function SettingsPage() {
           </span>
           <div>
             <h2 className="text-[15px] font-medium">Zone de danger</h2>
-            <p className="text-sm text-base-300">Supprime définitivement toutes les tâches, routines et catégories.</p>
+            <p className="text-sm text-base-300">Supprime définitivement toutes les tâches, routines, projets et catégories.</p>
           </div>
         </div>
         <GhostButton

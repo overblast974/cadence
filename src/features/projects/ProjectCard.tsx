@@ -9,15 +9,16 @@ import { ProgressRing } from '../../components/ProgressRing';
 interface ProjectCardProps {
   project: Project;
   category?: Category;
-  tasks: Task[];
+  /** `undefined` tant que la requête des tâches liées n'a pas résolu : on évite alors d'afficher "Aucune tâche liée" par erreur. */
+  tasks: Task[] | undefined;
   onOpen: (project: Project) => void;
   onDelete: (id: string) => void;
 }
 
 export function ProjectCard({ project, category, tasks, onOpen, onDelete }: ProjectCardProps) {
   const style = colorStyle(category?.color);
-  const total = tasks.length;
-  const done = tasks.filter((t) => t.done).length;
+  const total = tasks?.length ?? 0;
+  const done = tasks?.filter((t) => t.done).length ?? 0;
   const ratio = total === 0 ? 0 : done / total;
   const complete = project.completedAt !== undefined;
 
@@ -41,11 +42,15 @@ export function ProjectCard({ project, category, tasks, onOpen, onDelete }: Proj
             {project.title}
           </span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-base-300">
-            {total === 0 ? 'Aucune tâche liée' : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${done > 1 ? 's' : ''}`}
+            {tasks === undefined
+              ? ' '
+              : total === 0
+                ? 'Aucune tâche liée'
+                : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${total > 1 ? 's' : ''}`}
             {category && <span>· {category.name}</span>}
           </span>
         </span>
-        {total > 0 && <ProgressRing value={ratio} size={40} strokeWidth={4} label="" />}
+        {total > 0 && <ProgressRing value={ratio} size={40} strokeWidth={4} />}
       </button>
       <ConfirmDeleteButton label={`Supprimer le projet "${project.title}"`} onConfirm={() => onDelete(project.id)} />
     </motion.li>

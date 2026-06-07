@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Category, Project, Task } from '../types';
 import { Sheet } from './Sheet';
 import { Field, TextInput, TextArea, CategoryPicker, PrimaryButton, GhostButton } from './FormControls';
 import { CheckCircle } from './CheckCircle';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 import { fromDateKey, fullDateLabel } from '../lib/date';
 import { useSubtasks } from '../hooks/useCadenceData';
 import { createSubtask, deleteTask, toggleTask } from '../db/repository';
@@ -179,14 +180,11 @@ function SubtaskSection({ parentId }: { parentId: string }) {
                   small
                 />
                 <span className={subtaskTitleClass(subtask.done)}>{subtask.title}</span>
-                <button
-                  type="button"
-                  onClick={() => void deleteTask(subtask.id)}
-                  aria-label={`Supprimer la sous-tâche "${subtask.title}"`}
-                  className="ml-auto shrink-0 rounded-full p-1.5 text-base-500/70 transition-colors hover:bg-base-700/60 hover:text-accent-coral"
-                >
-                  <X className="size-4" />
-                </button>
+                <ConfirmDeleteButton
+                  label={`Supprimer la sous-tâche "${subtask.title}"`}
+                  onConfirm={() => void deleteTask(subtask.id)}
+                  className="ml-auto shrink-0 !p-1.5"
+                />
               </li>
             ))}
           </ul>

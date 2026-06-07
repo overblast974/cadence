@@ -64,7 +64,7 @@ export function TodayPage() {
           <p className="text-sm text-base-300">Aujourd’hui</p>
           <h1 className="text-xl font-semibold capitalize tracking-tight">{fullDateLabel(new Date())}</h1>
           <p className="mt-1 text-sm text-base-300">
-            {total === 0 ? 'Aucune tâche prévue — profite-en !' : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${done > 1 ? 's' : ''}`}
+            {total === 0 ? 'Aucune tâche prévue — profite-en !' : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${total > 1 ? 's' : ''}`}
           </p>
         </div>
         {total > 0 && <ProgressRing value={ratio} size={72} strokeWidth={7} />}

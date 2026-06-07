@@ -18,17 +18,23 @@ export function ProjectsPage() {
   const categoryById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c])), [categories]);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Project | undefined>(undefined);
-  const [viewing, setViewing] = useState<Project | undefined>(undefined);
+  const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const [viewingId, setViewingId] = useState<string | undefined>(undefined);
+
+  // On dérive les projets affichés depuis la liste vivante plutôt que de garder
+  // un instantané : la feuille de détail/édition reste à jour en temps réel
+  // (ex. le badge "projet terminé" apparaît dès que la dernière tâche est cochée).
+  const editing = useMemo(() => projects?.find((p) => p.id === editingId), [projects, editingId]);
+  const viewing = useMemo(() => projects?.find((p) => p.id === viewingId), [projects, viewingId]);
 
   function openCreate() {
-    setEditing(undefined);
+    setEditingId(undefined);
     setFormOpen(true);
   }
 
   function openEdit(project: Project) {
-    setViewing(undefined);
-    setEditing(project);
+    setViewingId(undefined);
+    setEditingId(project.id);
     setFormOpen(true);
   }
 
@@ -71,7 +77,7 @@ export function ProjectsPage() {
                 key={project.id}
                 project={project}
                 categoryById={categoryById}
-                onOpen={setViewing}
+                onOpen={(p) => setViewingId(p.id)}
                 onDelete={(id) => void deleteProject(id)}
               />
             ))}
@@ -89,7 +95,7 @@ export function ProjectsPage() {
 
       <ProjectDetailSheet
         project={viewing}
-        onClose={() => setViewing(undefined)}
+        onClose={() => setViewingId(undefined)}
         onEdit={openEdit}
       />
     </div>
@@ -141,9 +147,11 @@ function ProjectDetailSheet({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-base-300">
-              {total === 0
-                ? 'Aucune tâche liée pour le moment.'
-                : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${done > 1 ? 's' : ''}${project.completedAt ? ' · projet terminé 🎉' : ''}`}
+              {tasks === undefined
+                ? ' '
+                : total === 0
+                  ? 'Aucune tâche liée pour le moment.'
+                  : `${done} / ${total} tâche${total > 1 ? 's' : ''} validée${total > 1 ? 's' : ''}${project.completedAt ? ' · projet terminé 🎉' : ''}`}
             </p>
             <GhostButton type="button" onClick={() => onEdit(project)} className="!px-3 !py-1.5 text-sm">
               Modifier
@@ -152,7 +160,7 @@ function ProjectDetailSheet({
 
           {project.notes && <p className="rounded-xl border border-base-700/60 bg-base-900/30 p-3 text-sm text-base-300">{project.notes}</p>}
 
-          {tasks === undefined || tasks.length === 0 ? (
+          {tasks === undefined ? null : tasks.length === 0 ? (
             <p className="rounded-xl border border-dashed border-base-700/60 px-3 py-6 text-center text-sm text-base-500">
               Rattache des tâches à ce projet depuis leur formulaire (« Projet »).
             </p>
