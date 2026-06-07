@@ -48,13 +48,13 @@ export function StatsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard icon={Flame} label="Série en cours" value={`${streak} j`} accent="text-accent-amber" />
         <StatCard icon={Target} label="Tâches validées" value={`${totalDone}`} accent="text-accent-mint" sublabel={`sur ${HEATMAP_DAYS} jours`} />
-        <div className="col-span-2 flex items-center gap-4 rounded-2xl border border-base-700/60 bg-base-800/60 p-4 sm:col-span-1">
+        <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-base-700/60 bg-base-800/60 p-4 sm:col-span-1">
           <ProgressRing value={rate} size={64} strokeWidth={6} />
-          <div>
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-base-300">
-              <TrendingUp className="size-3.5" /> Taux global
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs text-base-300">
+              <TrendingUp className="size-3.5 shrink-0" /> <span className="truncate">Taux global</span>
             </p>
-            <p className="text-sm text-base-300">sur les {HEATMAP_DAYS} derniers jours</p>
+            <p className="text-xs text-base-500">sur {HEATMAP_DAYS} jours</p>
           </div>
         </div>
       </div>
