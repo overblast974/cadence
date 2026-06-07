@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useCategories, useTasksForDate } from '../../hooks/useCadenceData';
 import { fullDateLabel, todayKey } from '../../lib/date';
-import { createTask, deleteTask, toggleTask } from '../../db/repository';
+import { createTask, deleteTask, toggleTask, updateTask } from '../../db/repository';
+import type { Task } from '../../types';
 import { TaskRow } from '../../components/TaskRow';
 import { ProgressRing } from '../../components/ProgressRing';
 import { Confetti } from '../../components/Confetti';
@@ -16,7 +17,26 @@ export function TodayPage() {
   const tasks = useTasksForDate(date);
   const categories = useCategories();
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Task | undefined>(undefined);
   const [celebration, setCelebration] = useState(0);
+
+  function openCreate() {
+    setEditing(undefined);
+    setFormOpen(true);
+  }
+
+  function openEdit(task: Task) {
+    setEditing(task);
+    setFormOpen(true);
+  }
+
+  async function handleSubmit(values: Parameters<typeof createTask>[0]) {
+    if (editing) {
+      await updateTask(editing.id, values);
+    } else {
+      await createTask(values);
+    }
+  }
 
   const categoryById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c])), [categories]);
 
@@ -54,7 +74,7 @@ export function TodayPage() {
           title="Rien au programme"
           description="Ajoute une tâche ou crée une routine pour qu'elle apparaisse ici automatiquement chaque semaine."
           actionLabel="Ajouter une tâche"
-          onAction={() => setFormOpen(true)}
+          onAction={openCreate}
         />
       ) : (
         <motion.ul layout className="flex flex-col gap-2.5">
@@ -66,6 +86,7 @@ export function TodayPage() {
                 category={categoryById.get(task.categoryId ?? '')}
                 onToggle={handleToggle}
                 onDelete={(id) => void deleteTask(id)}
+                onOpen={openEdit}
               />
             ))}
           </AnimatePresence>
@@ -73,7 +94,7 @@ export function TodayPage() {
       )}
 
       {tasks && tasks.length > 0 && (
-        <PrimaryButton type="button" onClick={() => setFormOpen(true)} className="self-start">
+        <PrimaryButton type="button" onClick={openCreate} className="self-start">
           <Plus className="size-4" /> Ajouter une tâche
         </PrimaryButton>
       )}
@@ -81,9 +102,10 @@ export function TodayPage() {
       <TaskFormSheet
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSubmit={(values) => void createTask(values)}
+        onSubmit={(values) => void handleSubmit(values)}
         categories={categories ?? []}
         defaultDate={date}
+        task={editing}
       />
     </div>
   );

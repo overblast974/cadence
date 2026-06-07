@@ -11,11 +11,12 @@ interface WeekDayColumnProps {
   categoryById: Map<string, Category>;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onOpen: (task: Task) => void;
   onAdd: (date: Date) => void;
   compact?: boolean;
 }
 
-export function WeekDayColumn({ date, tasks, categoryById, onToggle, onDelete, onAdd, compact }: WeekDayColumnProps) {
+export function WeekDayColumn({ date, tasks, categoryById, onToggle, onDelete, onOpen, onAdd, compact }: WeekDayColumnProps) {
   const today = isToday(date);
   const done = tasks.filter((t) => t.done).length;
   // En grille (écran déplié), les colonnes sont étroites : on condense les lignes de tâche.
@@ -67,6 +68,7 @@ export function WeekDayColumn({ date, tasks, categoryById, onToggle, onDelete, o
                 category={categoryById.get(task.categoryId ?? '')}
                 onToggle={onToggle}
                 onDelete={onDelete}
+                onOpen={onOpen}
                 compact={narrowColumn}
               />
             ))}

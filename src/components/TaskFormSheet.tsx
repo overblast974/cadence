@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Category, Task } from '../types';
 import { Sheet } from './Sheet';
 import { Field, TextInput, TextArea, CategoryPicker, PrimaryButton, GhostButton } from './FormControls';
+import { fromDateKey, fullDateLabel } from '../lib/date';
 
 interface TaskFormValues {
   title: string;
@@ -77,12 +78,23 @@ function TaskFormFields({ onClose, onSubmit, categories, defaultDate, task }: Ta
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date" htmlFor="task-date">
-          <TextInput id="task-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          {task ? (
+            <p
+              id="task-date"
+              className="w-full truncate rounded-xl border border-base-700/60 bg-base-900/30 px-3.5 py-2.5 text-[15px] capitalize text-base-300"
+              title="La date d’une tâche ne peut pas être modifiée après sa création."
+            >
+              {fullDateLabel(fromDateKey(date))}
+            </p>
+          ) : (
+            <TextInput id="task-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          )}
         </Field>
         <Field label="Heure (optionnel)" htmlFor="task-time">
           <TextInput id="task-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </Field>
       </div>
+      {task && <p className="-mt-2 text-xs text-base-500">La date est figée : crée une nouvelle tâche pour la déplacer à un autre jour.</p>}
 
       <Field label="Catégorie" htmlFor="task-category">
         <div id="task-category">

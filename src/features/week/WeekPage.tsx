@@ -6,7 +6,7 @@ import type { Task } from '../../types';
 import { useCategories, useTasksForRange } from '../../hooks/useCadenceData';
 import { useViewportMode } from '../../hooks/useViewportMode';
 import { monthLabel, toDateKey, weekDays } from '../../lib/date';
-import { createTask, deleteTask, toggleTask } from '../../db/repository';
+import { createTask, deleteTask, toggleTask, updateTask } from '../../db/repository';
 import { WeekDayColumn } from './WeekDayColumn';
 import { TaskFormSheet } from '../../components/TaskFormSheet';
 import { GhostButton } from '../../components/FormControls';
@@ -23,6 +23,25 @@ export function WeekPage() {
   const categoryById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c])), [categories]);
 
   const [formDate, setFormDate] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Task | undefined>(undefined);
+
+  function openEdit(task: Task) {
+    setEditing(task);
+    setFormDate(task.date);
+  }
+
+  function closeForm() {
+    setFormDate(null);
+    setEditing(undefined);
+  }
+
+  async function handleSubmit(values: Parameters<typeof createTask>[0]) {
+    if (editing) {
+      await updateTask(editing.id, values);
+    } else {
+      await createTask(values);
+    }
+  }
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -71,7 +90,11 @@ export function WeekPage() {
               categoryById={categoryById}
               onToggle={(id) => void toggleTask(id)}
               onDelete={(id) => void deleteTask(id)}
-              onAdd={(d) => setFormDate(toDateKey(d))}
+              onOpen={openEdit}
+              onAdd={(d) => {
+                setEditing(undefined);
+                setFormDate(toDateKey(d));
+              }}
               compact={mode !== 'expanded'}
             />
           );
@@ -80,10 +103,11 @@ export function WeekPage() {
 
       <TaskFormSheet
         open={formDate !== null}
-        onClose={() => setFormDate(null)}
-        onSubmit={(values) => void createTask(values)}
+        onClose={closeForm}
+        onSubmit={(values) => void handleSubmit(values)}
         categories={categories ?? []}
         defaultDate={formDate ?? toDateKey(new Date())}
+        task={editing}
       />
     </div>
   );
