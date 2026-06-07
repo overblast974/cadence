@@ -2,12 +2,21 @@ import { useEffect, useState } from 'react';
 import type { ViewportMode } from '../types';
 
 /**
- * Le Z Fold 4 (et les pliables en général) ne changent pas de "device" entre
- * les deux écrans : la page est réellement redimensionnée (un `resize` natif
- * se déclenche). On détecte donc le format à partir de la largeur réelle du
- * viewport ET de son ratio, ce qui permet de distinguer :
- *  - écran de couverture : étroit et très allongé   (~344 x 882 CSS px)
- *  - écran principal ouvert : large et presque carré (~690 x 830 CSS px)
+ * Les pliables (Z Fold 4 à 7, et la plupart des autres) ne changent pas de
+ * "device" entre les deux écrans : la page est réellement redimensionnée
+ * (un `resize` natif se déclenche). On détecte donc le format à partir de la
+ * largeur réelle du viewport ET de son ratio plutôt que de comparer à une
+ * liste de résolutions exactes — ce qui généralise à toute la gamme (et aux
+ * futurs modèles) sans avoir à la maintenir. Les deux écrans suivent en effet
+ * la même tendance d'une génération à l'autre :
+ *  - écran de couverture : étroit et très allongé   (~340-415 x 880-960 CSS px,
+ *    ratio ~0.39-0.43 du Fold 4 au Fold 7)
+ *  - écran principal ouvert : large et presque carré (~690-750 x 820-830 CSS px,
+ *    ratio ~0.83-0.90 du Fold 4 au Fold 7)
+ * Les seuils ci-dessous se situent confortablement entre ces deux familles de
+ * valeurs (largeur : ~415 max en couverture vs ~690 min ouvert ; ratio : ~0.43
+ * max en couverture vs ~0.83 min ouvert), avec une marge suffisante pour
+ * absorber les variations de futurs modèles sans déclencher un mauvais layout.
  */
 const COMPACT_MAX_WIDTH = 540;
 const EXPANDED_MIN_RATIO = 0.68; // largeur / hauteur

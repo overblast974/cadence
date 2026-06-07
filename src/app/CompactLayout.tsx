@@ -3,8 +3,10 @@ import clsx from 'clsx';
 import { NAV_ITEMS } from './navigation';
 
 /**
- * Mise en page pour l'écran de couverture (étroit ~344x882 CSS px) :
- * navigation au pouce en bas de l'écran, contenu en une colonne.
+ * Mise en page pour les écrans étroits et allongés (téléphones classiques,
+ * et écrans de couverture des pliables Z Fold — ~340-415x880-960 CSS px du
+ * Fold 4 au Fold 7) : navigation au pouce en bas de l'écran, contenu en
+ * une colonne, qui s'étire ou se rétrécit naturellement avec la largeur réelle.
  */
 export function CompactLayout() {
   return (

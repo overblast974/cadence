@@ -3,8 +3,11 @@ import clsx from 'clsx';
 import { NAV_ITEMS } from './navigation';
 
 /**
- * Mise en page pour l'écran principal déplié (large et presque carré ~690x830 CSS px) :
- * rail de navigation latéral façon tablette, contenu pouvant s'étaler sur plusieurs colonnes.
+ * Mise en page pour les écrans larges et presque carrés (écran principal des
+ * pliables Z Fold déplié — ~690-750x820-830 CSS px du Fold 4 au Fold 7 — ou
+ * mini-tablette) : rail de navigation latéral façon tablette de largeur fixe,
+ * contenu fluide (`flex-1`, `max-w-4xl` centré) qui absorbe l'écart de largeur
+ * entre modèles sans qu'aucune valeur ne soit câblée en dur sur un format précis.
  */
 export function ExpandedLayout() {
   return (
