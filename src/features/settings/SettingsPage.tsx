@@ -1,15 +1,22 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Database, Download, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { Database, Download, Smartphone, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { db } from '../../db/database';
 import { exportBackup, importBackup, type CadenceBackup } from '../../db/repository';
 import { GhostButton, PrimaryButton } from '../../components/FormControls';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
 type Status = { kind: 'idle' } | { kind: 'success'; message: string } | { kind: 'error'; message: string };
 
 export function SettingsPage() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const install = useInstallPrompt();
+
+  async function handleInstall() {
+    const accepted = await install.promptInstall();
+    if (accepted) setStatus({ kind: 'success', message: 'Installation lancée — Cadence va apparaître sur ton écran d’accueil.' });
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleExport() {
@@ -69,6 +76,29 @@ export function SettingsPage() {
         <p className="text-sm text-base-300">Configuration</p>
         <h1 className="text-xl font-semibold tracking-tight">Réglages</h1>
       </header>
+
+      {!install.installed && (
+        <section className="flex flex-col gap-3 rounded-2xl border border-accent-violet/30 bg-accent-violet/[0.06] p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-violet/15 text-accent-violet-soft">
+              <Smartphone className="size-4.5" />
+            </span>
+            <div>
+              <h2 className="text-[15px] font-medium">Installer l’application</h2>
+              <p className="mt-1 text-sm text-base-300">
+                {install.canPrompt
+                  ? 'Ajoute Cadence à ton écran d’accueil pour l’ouvrir comme une application, en plein écran et hors-ligne.'
+                  : 'Ton navigateur ne propose pas d’installation directe ici : ouvre le menu (⋮) puis « Ajouter à l’écran d’accueil » ou « Installer l’application ».'}
+              </p>
+            </div>
+          </div>
+          {install.canPrompt && (
+            <PrimaryButton type="button" onClick={() => void handleInstall()} className="self-start">
+              <Smartphone className="size-4" /> Installer Cadence
+            </PrimaryButton>
+          )}
+        </section>
+      )}
 
       <section className="flex flex-col gap-3 rounded-2xl border border-base-700/60 bg-base-800/60 p-4">
         <div className="flex items-start gap-3">
