@@ -59,7 +59,11 @@ export function WeekPage() {
       <header className="flex items-center justify-between gap-3 pt-2">
         <div>
           <p className="text-sm text-base-300">Planning</p>
-          <h1 className="text-xl font-semibold capitalize tracking-tight">{monthLabel(anchor)}</h1>
+          {/* Le mois affiché suit le premier jour (lundi) de la semaine visible plutôt
+              que `anchor` directement : `anchor` ne change que d'une semaine à la fois et
+              peut donc rester dans le mois précédent alors que la semaine affichée a déjà
+              basculé dans le mois suivant — le titre semblait alors "figé". */}
+          <h1 className="text-xl font-semibold capitalize tracking-tight">{monthLabel(days[0])}</h1>
         </div>
         <div className="flex items-center gap-1.5">
           <GhostButton type="button" aria-label="Semaine précédente" onClick={() => setAnchor((d) => addWeeks(d, -1))} className="!px-2.5 !py-2">
